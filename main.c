@@ -1,10 +1,14 @@
 /* This project is based on libopencm3 STM32F4 usart_irq example */
 /* Modified by: Jiří Veverka (xvever12@vutbr.cz) */
 
+#include <string.h>
+
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
+
+#include "adc_light.h"
 
 #define IRQ_PRI_USBUSART        (1 << 4)
 
@@ -74,6 +78,41 @@ int main(void)
 	return 0;
 }
 
+#define MAX_BUFFER_SIZE		25
+static uint8_t recv_buffer[MAX_BUFFER_SIZE];
+static uint8_t command = false;
+static uint8_t delete = false;
+static uint8_t i = 0;
+
+static char *version = "1.0";
+
+void clear_buffer() {
+	for (int j = 0; j < MAX_BUFFER_SIZE; j++) {
+		recv_buffer[j] = 0;
+	}
+}
+
+void send_message(char *message, size_t size) {
+	for (size_t j = 0; j < size; j++) {
+		usart_send_blocking(USART1, message[j]);
+	}
+	usart_send_blocking(USART1, '\r');
+	usart_send_blocking(USART1, '\n');
+}
+
+void parse_command() {
+	static char *message;
+
+	if (strcmp((char *)recv_buffer, "print buffer") == 0) { //TEST FUNCTION
+		message = "RESPONSE!";
+		send_message(message, strlen(message));
+	} else if (strcmp((char *)recv_buffer, "get version") == 0) {
+		message = version;
+		send_message(message, strlen(message));
+	}
+	clear_buffer();
+}
+
 void usart1_isr(void)
 {
 	static uint8_t data = 'A';
@@ -88,6 +127,16 @@ void usart1_isr(void)
 		// Retrieve the data from the peripheral.
 		data = usart_recv(USART1);
 
+		if ((int)((char)data) == 13 || (int)((char)data) == 10) { //Enter
+			command = true;
+		} else if ((int)((char)data) == 127) { //Delete last char
+			recv_buffer[i] = 0;
+			i--;
+			delete = true;
+		} else if (i < MAX_BUFFER_SIZE) { //If we don't want to execute the command or delete the entry, add the char to the buffer...
+			recv_buffer[i] = data;
+			i++;
+		}
 		// Enable transmit interrupt so it sends back the data.
 		usart_enable_tx_interrupt(USART1);
 	}
@@ -97,7 +146,20 @@ void usart1_isr(void)
 	    ((USART_SR(USART1) & USART_SR_TXE) != 0)) {
 
 		// Put data into the transmit register.
-		usart_send(USART1, data);
+		if (command) {
+			usart_send_blocking(USART1, '\r');
+			usart_send_blocking(USART1, '\n');
+			i = 0;
+			command = false;
+			parse_command();
+		} else if (delete) {
+			usart_send_blocking(USART1, '\b');
+			usart_send_blocking(USART1, ' ');
+			usart_send_blocking(USART1, '\b');
+			delete = false;
+		} else if (i < MAX_BUFFER_SIZE) {
+			usart_send(USART1, data);
+		}
 
 		// Disable the TXE interrupt as we don't need it anymore.
 		usart_disable_tx_interrupt(USART1);

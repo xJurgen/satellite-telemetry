@@ -36,7 +36,7 @@ LDFLAGS_BOOT 	:= $(LDFLAGS) --specs=nano.specs \
 LDFLAGS 		= $(LDFLAGS_BOOT)
 
 
-SRC				= main.c
+SRC				= main.c adc_light.c
 DEP				= $(SRC:.c=.d)
 OBJ				= $(SRC:.c=.o)
 
