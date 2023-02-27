@@ -7,6 +7,15 @@
 *.obj
 *.elf
 
+# Binaries
+*.bin
+
+# Mapfile
+mapfile
+
+# Visual studio code files
+.vscode*
+
 # Linker output
 *.ilk
 *.map
