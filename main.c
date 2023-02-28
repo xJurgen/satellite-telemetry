@@ -20,6 +20,9 @@ static void clock_setup(void)
 
 	// Enable clocks for USART1.
 	rcc_periph_clock_enable(RCC_USART1);
+
+	// Enable clocks for ADC
+	rcc_periph_clock_enable(RCC_ADC1);
 }
 
 static void usart_setup(void)
@@ -65,8 +68,7 @@ int main(void)
 {
 	clock_setup();
 	gpio_setup();
-	init_adc_light();
-	init_adc_temp();
+	init_adc();
 	usart_setup();
 
 	while (1) {
@@ -152,21 +154,26 @@ void parse_command() {
 		message = build_time;
 
 	} else if (strcmp(token_buffer, "get light") == 0) {
-		if (sensor_num < 0) {
+		if (sensor_num <= 0 || sensor_num >= 7) {
 			message = "Enter valid sensor number!";
 		} else {
-			/*uint8_t val = get_adc_val(sensor_num);
+			uint16_t val = get_light_val(sensor_num);
 			sprintf(temp_message, "Sensor %d value: %d", sensor_num, val);
-			message = temp_message;*/
-			(void) temp_message;
+			message = temp_message;
+			/*(void) temp_message;
 			(void) sensor_num;
 
-			message = "NOT IMPLEMENTED YET!!!";
+			message = "NOT IMPLEMENTED YET!!!";*/
 		}
 
 	} else if (strcmp(token_buffer, "get temp") == 0) {
-		message = "NOT IMPLEMENTED YET!!!";
+		uint16_t val = get_temp();
+		sprintf(temp_message, "Temp %d", val);
+		message = temp_message;
+		/*(void) temp_message;
+		(void) sensor_num;
 
+		message = "NOT IMPLEMENTED YET!!!";*/
 	} else {
 		message = "Unknown command!";
 	}
@@ -190,7 +197,9 @@ void usart1_isr(void)
 		data = usart_recv(USART1);
 
 		if ((int)((char)data) == 13 || (int)((char)data) == 10) { //Enter
-			command = true;
+			if (strlen((char*) recv_buffer) != 0) {
+				command = true;
+			}
 		} else if ((int)((char)data) == 127) { //Delete last char
 			recv_buffer[i] = 0;
 			i--;
