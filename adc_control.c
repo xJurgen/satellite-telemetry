@@ -1,6 +1,10 @@
-#include "adc_light.h"
+#include "adc_control.h"
 
 void init_adc_light() {
+    return;
+}
+
+void init_adc_temp() {
     return;
 }
 

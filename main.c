@@ -7,7 +7,7 @@
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
 
-#include "adc_light.h"
+#include "adc_control.h"
 
 #define IRQ_PRI_USBUSART        (1 << 4)
 
