@@ -1,7 +1,6 @@
 /* This project is based on libopencm3 STM32F4 usart_irq example */
 /* Modified by: Jiří Veverka (xvever12@vutbr.cz) */
-
-#include <string.h>
+#include "libs.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -57,7 +56,7 @@ static void usart_setup(void)
 
 static void gpio_setup(void)
 {
-	// Setup GPIO pin GPIO12 on GPIO port C for LED.
+	// Setup GPIO pin GPIO13 on GPIO port C for LED.
 	gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13);
 }
 
@@ -65,6 +64,7 @@ int main(void)
 {
 	clock_setup();
 	gpio_setup();
+	init_adc_light();
 	usart_setup();
 
 	while (1) {
@@ -78,8 +78,11 @@ int main(void)
 	return 0;
 }
 
+//TODO: Print float numbers
+
 #define MAX_BUFFER_SIZE		25
 static uint8_t recv_buffer[MAX_BUFFER_SIZE];
+static char token_buffer[MAX_BUFFER_SIZE];
 static uint8_t command = false;
 static uint8_t delete = false;
 static uint8_t i = 0;
@@ -89,6 +92,7 @@ static char *version = "1.0";
 void clear_buffer() {
 	for (int j = 0; j < MAX_BUFFER_SIZE; j++) {
 		recv_buffer[j] = 0;
+		token_buffer[j] = 0;
 	}
 }
 
@@ -100,14 +104,52 @@ void send_message(char *message, size_t size) {
 	usart_send_blocking(USART1, '\n');
 }
 
+int tokenize() {
+	const char *recv = (char *)recv_buffer;
+	const char *recv_end = recv + strlen(recv) + 1;
+	char buf[MAX_BUFFER_SIZE];
+
+	int scan_len = 0;
+
+	int num = -1;
+
+	for (; recv < recv_end && sscanf(recv, "%[^ ]%n", buf, &scan_len); recv += scan_len+1) {
+		//In this version we save only the last number scanned. Non-numerical values are saved into separate buffer.
+		//If needed, will be changed according to the to-be defined protocol in the future
+		if (!sscanf(recv, "%d", &num)) {
+			strcat(token_buffer, strcat(buf, " "));
+		}
+	}
+
+	size_t space_pos = strlen(token_buffer);
+	token_buffer[space_pos-1] = 0;
+
+	//send_message(token_buffer, strlen(token_buffer)); //Uncomment for debug purposes
+
+	return num;
+}
+
 void parse_command() {
 	static char *message;
+	char temp_message[MAX_BUFFER_SIZE]; //If we need to print some value into the buffered messages, we use this variable (quick workaround)
 
-	if (strcmp((char *)recv_buffer, "print buffer") == 0) { //TEST FUNCTION
+	//char *recv = (char *)recv_buffer;
+
+	//In this version of the communication protocol we consider only one number in the receiving sequence
+	//thus the returning value of the tokenize() function is the only found number (if present) in the sequence.
+	int scan_val = tokenize();
+
+
+	if (strcmp(token_buffer, "print buffer") == 0) { //TEST FUNCTION
 		message = "RESPONSE!";
 		send_message(message, strlen(message));
-	} else if (strcmp((char *)recv_buffer, "get version") == 0) {
+	} else if (strcmp(token_buffer, "get version") == 0) {
 		message = version;
+		send_message(message, strlen(message));
+	} else if (strcmp(token_buffer, "get light") == 0) {
+		uint8_t val = get_adc_val(scan_val);
+		sprintf(temp_message, "Value: %d, scanned: %d", val, scan_val);
+		message = temp_message;
 		send_message(message, strlen(message));
 	}
 	clear_buffer();
