@@ -1,18 +1,24 @@
 # satellite-telemetry
 
-This is a college project focused on the creation of a CubeSat from scratch.
-The code implements a Blackpill (STM32F411CE) as a sensor driving unit.
+This is a college project with an objective to create a CubeSat-like device from scratch.
 
-The final product is intended to be used jointly with an RPi Zero W (v1.1) communicating using USART.
+The code is intended for a Blackpill (STM32F411CE) board and its functionality provides an access to the satellite sensors.
+In the final design the Blackpill is connected to an RPi Zero W (V1.1) via USART1 and responds on the RPi requests.
 
 Implemented features:
 	
 	- Command processing
 	- Communication on USART1
 
+Work in progress:
+	
+	- Light and temperature sensing using ADC
+
 Planned features:
 
-	- Light sensor processing using ADC
-	- Battery management (input/output/battery current with implemented kill-switch when the battery is too low)
-	- Gyroscope sensor
-	- and more (yet to be defined)...
+	- Battery management (solar panels input, battery output, shut-off when critically low level of battery..)
+	- Gyroscope reading (?)
+
+
+
+
