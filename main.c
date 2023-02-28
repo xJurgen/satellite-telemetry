@@ -1,6 +1,7 @@
 /* This project is based on libopencm3 STM32F4 usart_irq example */
 /* Modified by: Jiří Veverka (xvever12@vutbr.cz) */
 #include "libs.h"
+#include "version.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -65,6 +66,7 @@ int main(void)
 	clock_setup();
 	gpio_setup();
 	init_adc_light();
+	init_adc_temp();
 	usart_setup();
 
 	while (1) {
@@ -87,7 +89,8 @@ static uint8_t command = false;
 static uint8_t delete = false;
 static uint8_t i = 0;
 
-static char *version = "1.0";
+static char *version = FIRMWARE_VERSION;
+static char *build_time = BUILD_TIME;
 
 void clear_buffer() {
 	for (int j = 0; j < MAX_BUFFER_SIZE; j++) {
@@ -143,8 +146,10 @@ void parse_command() {
 	if (strcmp(token_buffer, "print buffer") == 0) { //TEST FUNCTION
 		message = "RESPONSE!";
 
-	} else if (strcmp(token_buffer, "get version") == 0) {
+	} else if (strcmp(token_buffer, "get info") == 0) {
 		message = version;
+		send_message(message, strlen(message));
+		message = build_time;
 
 	} else if (strcmp(token_buffer, "get light") == 0) {
 		if (sensor_num < 0) {

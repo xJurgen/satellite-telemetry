@@ -1,3 +1,6 @@
+VERSION = 1.0
+DATETIME := $(shell date --iso-8601=seconds)
+
 Q 				:= @
 MFLAGS 			+= --no-print-dir
 
@@ -40,18 +43,24 @@ SRC				= main.c adc_control.c
 DEP				= $(SRC:.c=.d)
 OBJ				= $(SRC:.c=.o)
 
+.PHONY: FORCE
 
 all: lib $(BINARY).bin
+
+version.h: FORCE
+	$(Q)echo "  CREATE  version.h"
+	$(Q)echo "#define FIRMWARE_VERSION \"FW VERSION: $(VERSION)\"" > $@
+	$(Q)echo "#define BUILD_TIME \"BUILD TIME: $(DATETIME)\"" >> $@
 
 lib:
 	$(Q)$(MAKE) $(MFLAGS) -C libopencm3 TARGETS=stm32/f4
 
 host_clean:
-	rm mapfile $(OBJ) $(DEP)
+	rm mapfile $(OBJ) $(DEP) version.h
 clean: host_clean
 	rm $(BINARY).*
 
-$(BINARY).elf: $(OBJ)
+$(BINARY).elf: version.h $(OBJ)
 	@echo "	LD	$@"
 	$(Q)$(CC) -o $@ $(OBJ) $(LDFLAGS)
 

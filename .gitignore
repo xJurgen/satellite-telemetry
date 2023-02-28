@@ -16,6 +16,9 @@ mapfile
 # Visual studio code files
 .vscode*
 
+# Automatically generated version file
+version.h
+
 # Linker output
 *.ilk
 *.map
