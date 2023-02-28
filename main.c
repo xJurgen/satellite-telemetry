@@ -137,21 +137,36 @@ void parse_command() {
 
 	//In this version of the communication protocol we consider only one number in the receiving sequence
 	//thus the returning value of the tokenize() function is the only found number (if present) in the sequence.
-	int scan_val = tokenize();
+	int sensor_num = tokenize();
 
 
 	if (strcmp(token_buffer, "print buffer") == 0) { //TEST FUNCTION
 		message = "RESPONSE!";
-		send_message(message, strlen(message));
+
 	} else if (strcmp(token_buffer, "get version") == 0) {
 		message = version;
-		send_message(message, strlen(message));
+
 	} else if (strcmp(token_buffer, "get light") == 0) {
-		uint8_t val = get_adc_val(scan_val);
-		sprintf(temp_message, "Value: %d, scanned: %d", val, scan_val);
-		message = temp_message;
-		send_message(message, strlen(message));
+		if (sensor_num < 0) {
+			message = "Enter valid sensor number!";
+		} else {
+			/*uint8_t val = get_adc_val(sensor_num);
+			sprintf(temp_message, "Sensor %d value: %d", sensor_num, val);
+			message = temp_message;*/
+			(void) temp_message;
+			(void) sensor_num;
+
+			message = "NOT IMPLEMENTED YET!!!";
+		}
+
+	} else if (strcmp(token_buffer, "get temp") == 0) {
+		message = "NOT IMPLEMENTED YET!!!";
+
+	} else {
+		message = "Unknown command!";
 	}
+
+	send_message(message, strlen(message));
 	clear_buffer();
 }
 
