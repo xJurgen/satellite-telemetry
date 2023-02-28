@@ -28,10 +28,10 @@ OBJCOPY			= $(CROSS_COMPILE)objcopy
 CFLAGS 			+= $(ARCH_FLAGS) $(DEFS) \
 					-DDISCOVERY_STLINK -I libopencm3/include -I .
 
-LDFLAGS_BOOT 	:= $(LDFLAGS) --specs=nano.specs \
+LDFLAGS_BOOT 	:= $(LDFLAGS) --specs=nano.specs -specs=nosys.specs \
         			-l$(LIBNAME) -Wl,--defsym,_stack=0x20005000 \
         			-Wl,-T,$(LDSCRIPT) -nostartfiles -lc \
-        			-Wl,-Map=mapfile -mthumb -mcpu=cortex-m4 -Wl,-gc-sections \
+        			-Wl,-Map=mapfile $(ARCH_FLAGS) -Wl,-gc-sections \
         			-L libopencm3/lib
 LDFLAGS 		= $(LDFLAGS_BOOT)
 
