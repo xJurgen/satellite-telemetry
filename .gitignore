@@ -10,6 +10,16 @@
 # Binaries
 *.bin
 
+# Archives
+*.zip
+
+# KiCAD cache
+fp-info-cache
+
+# KiCAD autosave
+\#auto_saved_files\#
+_autosave-expansion-board-stm.kicad_pcb
+
 # Mapfile
 mapfile
 
