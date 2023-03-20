@@ -4,6 +4,8 @@
 #include "version.h"
 
 #include <libopencm3/stm32/rcc.h>
+#include <libopencm3/cm3/systick.h>
+#include <libopencm3/cm3/scs.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
@@ -67,22 +69,21 @@ static void gpio_setup(void)
 int main(void)
 {
 	clock_setup();
+	rcc_clock_setup_pll(&rcc_hse_25mhz_3v3[RCC_CLOCK_3V3_96MHZ]); //Internal clock
+
 	gpio_setup();
 	init_adc();
 	usart_setup();
 
 	while (1) {
-		//gpio_toggle(GPIOC, GPIO13);     /* LED on/off */
-        //for (int i = 0; i < 1000000; i++) { /* Wait a bit. */
             __asm__("nop");
-        //}
 	}
 
     //Should not ever get there...
 	return 0;
 }
 
-//TODO: Print float numbers
+//TODO: Print float numbers?
 
 #define MAX_BUFFER_SIZE		25
 static uint8_t recv_buffer[MAX_BUFFER_SIZE];
@@ -109,6 +110,12 @@ void send_message(char *message, size_t size) {
 	usart_send_blocking(USART1, '\n');
 }
 
+void send_message_no_newline(char *message, size_t size) {
+	for (size_t j = 0; j < size; j++) {
+		usart_send_blocking(USART1, message[j]);
+	}
+}
+
 int tokenize() {
 	const char *recv = (char *)recv_buffer;
 	const char *recv_end = recv + strlen(recv) + 1;
@@ -119,7 +126,7 @@ int tokenize() {
 	int num = -1;
 
 	for (; recv < recv_end && sscanf(recv, "%[^ ]%n", buf, &scan_len); recv += scan_len+1) {
-		//In this version we save only the last number scanned. Non-numerical values are saved into separate buffer.
+		//In this version we save only the last number scanned, other are discarded. Non-numerical values are saved into separate buffer.
 		//If needed, will be changed according to the to-be defined protocol in the future
 		if (!sscanf(recv, "%d", &num)) {
 			strcat(token_buffer, strcat(buf, " "));
@@ -134,11 +141,39 @@ int tokenize() {
 	return num;
 }
 
+void get_all_values() {
+	char num[MAX_BUFFER_SIZE] = "0";
+
+	send_message_no_newline("OK TEMP ", sizeof("OK TEMP "));
+	get_temp();
+	sprintf(num, "%d ", get_temp());
+	send_message_no_newline(num, sizeof(num));
+	for (int i = 0; i < 800000; i++)    /* Wait a bit. */
+       	__asm__("nop");
+
+	send_message_no_newline("TEMP ", sizeof("TEMP "));
+	for (int j = 1; j <= 6; j++) {
+		sprintf(num, "%d ", get_light_val(j));
+		send_message_no_newline(num, sizeof(num));
+
+		for (int i = 0; i < 800000; i++)    /* Wait a bit. */ //DELETE IF TOO SLOW
+     	   __asm__("nop");
+	}
+
+	send_message_no_newline("CURR ", sizeof("CURR "));
+	double curr_volt[2] = {0.0, 0.0}; //TODO IMPLEMENT CURRENT SENSOR
+	for (int j = 0; j <= 1; j++) {
+		sprintf(num, "%lf ", curr_volt[j]);
+		send_message_no_newline(num, sizeof(num));
+	}
+
+	usart_send_blocking(USART1, '\r');
+	usart_send_blocking(USART1, '\n');
+}
+
 void parse_command() {
 	static char *message;
 	char temp_message[MAX_BUFFER_SIZE]; //If we need to print some value into the buffered messages, we use this variable (quick workaround)
-
-	//char *recv = (char *)recv_buffer;
 
 	//In this version of the communication protocol we consider only one number in the receiving sequence
 	//thus the returning value of the tokenize() function is the only found number (if present) in the sequence.
@@ -153,6 +188,19 @@ void parse_command() {
 		send_message(message, strlen(message));
 		message = build_time;
 
+	} else if (strcmp(token_buffer, "?") == 0) {
+		get_all_values();
+		clear_buffer();
+		return;
+
+	} else if (strcmp(token_buffer, "help") == 0) {
+		message = "Available commands:\r\n"
+					"\thelp - prints this dialogue\r\n"
+					"\tget info - prints information about the device\r\n"
+					"\tget light [n] - prints the digital value of a light sensor number [1-7]\r\n"
+					"\tget temp - prints the internal temperature\r\n\r\n"
+					"Everything else returns the prompt: \"Unknown command\"";
+
 	} else if (strcmp(token_buffer, "get light") == 0) {
 		if (sensor_num <= 0 || sensor_num >= 7) {
 			message = "Enter valid sensor number!";
@@ -160,20 +208,14 @@ void parse_command() {
 			uint16_t val = get_light_val(sensor_num);
 			sprintf(temp_message, "Sensor %d value: %d", sensor_num, val);
 			message = temp_message;
-			/*(void) temp_message;
-			(void) sensor_num;
-
-			message = "NOT IMPLEMENTED YET!!!";*/
 		}
 
 	} else if (strcmp(token_buffer, "get temp") == 0) {
+		get_temp();
 		uint16_t val = get_temp();
 		sprintf(temp_message, "Temp %d", val);
 		message = temp_message;
-		/*(void) temp_message;
-		(void) sensor_num;
 
-		message = "NOT IMPLEMENTED YET!!!";*/
 	} else {
 		message = "Unknown command!";
 	}
@@ -191,7 +233,7 @@ void usart1_isr(void)
 	    ((USART_SR(USART1) & USART_SR_RXNE) != 0)) {
 
 		// Indicate that we got data.
-		gpio_toggle(GPIOC, GPIO13);
+		//gpio_toggle(GPIOC, GPIO13);
 
 		// Retrieve the data from the peripheral.
 		data = usart_recv(USART1);
@@ -199,6 +241,7 @@ void usart1_isr(void)
 		if ((int)((char)data) == 13 || (int)((char)data) == 10) { //Enter
 			if (strlen((char*) recv_buffer) != 0) {
 				command = true;
+				gpio_toggle(GPIOC, GPIO13);
 			}
 		} else if ((int)((char)data) == 127) { //Delete last char
 			recv_buffer[i] = 0;
@@ -222,6 +265,7 @@ void usart1_isr(void)
 			usart_send_blocking(USART1, '\n');
 			i = 0;
 			command = false;
+			//gpio_toggle(GPIOC, GPIO13);
 			parse_command();
 		} else if (delete) {
 			usart_send_blocking(USART1, '\b');

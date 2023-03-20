@@ -35,7 +35,7 @@ LDFLAGS_BOOT 	:= $(LDFLAGS) --specs=nano.specs -specs=nosys.specs \
         			-l$(LIBNAME) -Wl,--defsym,_stack=0x20005000 \
         			-Wl,-T,$(LDSCRIPT) -nostartfiles -lc \
         			-Wl,-Map=mapfile $(ARCH_FLAGS) -Wl,-gc-sections \
-        			-L libopencm3/lib
+        			-L libopencm3/lib -u _printf_float
 LDFLAGS 		= $(LDFLAGS_BOOT)
 
 
