@@ -6,6 +6,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/cm3/scs.h>
+#include <libopencm3/cm3/scb.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/cm3/nvic.h>
@@ -151,7 +152,7 @@ void get_all_values() {
 	for (int i = 0; i < 800000; i++)    /* Wait a bit. */
        	__asm__("nop");
 
-	send_message_no_newline("TEMP ", sizeof("TEMP "));
+	send_message_no_newline("LIGHT ", sizeof("LIGHT "));
 	for (int j = 1; j <= 6; j++) {
 		sprintf(num, "%d ", get_light_val(j));
 		send_message_no_newline(num, sizeof(num));
@@ -188,6 +189,9 @@ void parse_command() {
 		send_message(message, strlen(message));
 		message = build_time;
 
+	} else if (strcmp(token_buffer, "R") == 0) {
+		send_message("OK", strlen("OK"));
+		scb_reset_system();
 	} else if (strcmp(token_buffer, "?") == 0) {
 		get_all_values();
 		clear_buffer();
