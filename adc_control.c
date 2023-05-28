@@ -7,18 +7,22 @@ void init_adc() {
     gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO1 | GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6);
 
 
-    adc_set_clk_prescale(ADC_CCR_ADCPRE_BY2);
-
     adc_power_off(ADC1);
     adc_disable_scan_mode(ADC1);
 
-    adc_set_single_conversion_mode(ADC1);
+    adc_set_clk_prescale(ADC_CCR_ADCPRE_BY2);
+
+    adc_set_right_aligned(ADC1);
+    //adc_set_single_conversion_mode(ADC1);
+    //adc_set_continuous_conversion_mode(ADC1);
+
     adc_enable_temperature_sensor();
 
     adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_3CYC);
 
     adc_set_multi_mode(ADC_CCR_MULTI_INDEPENDENT);
 
+    adc_enable_scan_mode(ADC1);
     adc_power_on(ADC1); //Test if keep here or if to move to the reading part (due to the higher power consumption?)
 
     /* Wait for ADC starting up. */
